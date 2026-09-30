@@ -63,9 +63,25 @@ cp .env.example .env
 Until the app passes Meta **App Review**, only users with a role on the app
 (or added as testers) can connect:
 
-1. Dashboard → **App roles** → **Roles** → **Add people** → add the Instagram
-   account holders as **Testers** (they must accept the invite).
-2. Each tester must use an **Instagram Professional** account.
+1. Dashboard → **App roles** → **Roles** → **Add people** → choose
+   **"Instagram Tester"** → enter the Instagram username (e.g. `nemivibess`)
+   → send the invite.
+2. **Accept the invite from the Instagram account**: the reliable place is
+   https://www.instagram.com/accounts/manage_access/ → **Tester Invites** tab
+   on the web (the phone app path Settings → Apps and Websites → Tester
+   Invites is not always visible). Until accepted, connecting fails with
+   "Insufficient developer role".
+3. Each tester must use an **Instagram Professional** account (Business or
+   Creator).
+
+> Your Facebook (developer) account and your Instagram account **can be
+> completely different** — that is the normal setup. The Facebook account
+> owns the app; the Instagram account is added as a tester and authorizes
+> the app by logging in with its own Instagram credentials.
+
+> Meta reshuffles the console often: if "Instagram" is not under
+> **Add products**, look for **Use cases** in the sidebar → the Instagram API
+> use case → **API setup with Instagram login**.
 
 ## 6. App review / access levels
 
