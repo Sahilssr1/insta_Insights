@@ -1,0 +1,26 @@
+# Secrets & local runtime
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.pytest_cache/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
