@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { ig, type SyncStatus } from '../api/client';
-import { useAuth } from '../hooks/useAuth';
 import { Badge, Button, Toasts, timeAgo, useToasts } from './ui';
 
 const NAV = [
@@ -12,8 +11,6 @@ const NAV = [
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [toasts, push] = useToasts();
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -41,8 +38,6 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   };
 
-  const onLogout = () => { logout(); navigate('/login'); };
-
   const syncBadge = syncStatus?.last_synced_at ? (
     <Badge tone={syncStatus.last_status === 'success' ? 'ok' : syncStatus.last_status === 'running' ? 'warn' : 'err'}>
       {syncing || syncStatus.syncing ? 'Syncing…' : `Synced ${timeAgo(syncStatus.last_synced_at)}`}
@@ -67,8 +62,6 @@ export function Layout({ children }: { children: ReactNode }) {
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {syncBadge}
           <Button size="sm" onClick={doSync} disabled={syncing}>{syncing ? 'Syncing…' : '↻ Sync now'}</Button>
-          <div style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>{user?.email}</div>
-          <Button size="sm" onClick={onLogout}>Log out</Button>
         </div>
       </aside>
 

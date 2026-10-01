@@ -16,14 +16,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!getJwt()) {
-      setLoading(false);
-      return;
-    }
-    ig.me()
-      .then(setUser)
-      .catch(() => clearJwt())
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    (async () => {
+      // Guest mode: testers never see a login screen. Resume the previous
+      // guest session when it is still valid; otherwise silently provision a
+      // fresh anonymous guest account (also recovers from a wiped server DB).
+      if (getJwt()) {
+        try {
+          const u = await ig.me();
+          if (!cancelled) setUser(u);
+          return;
+        } catch {
+          clearJwt(); // stale session → fall through to a fresh guest
+        }
+      }
+      const id = crypto.randomUUID().replace(/-/g, '');
+      const res = await ig.register('Guest', `guest-${id}@insightboard.app`, id);
+      setJwt(res.access_token);
+      if (!cancelled) setUser(await ig.me());
+    })()
+      .catch(() => {
+        /* backend unreachable — user stays null, UI shows a retry hint */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

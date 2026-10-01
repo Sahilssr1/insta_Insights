@@ -6,8 +6,19 @@ import { Audience } from './pages/Audience';
 import { Connect, RequireAccount } from './pages/Connect';
 import { Content } from './pages/Content';
 import { Dashboard } from './pages/Dashboard';
-import { Login } from './pages/Login';
 import { MediaDetail } from './pages/MediaDetail';
+
+function Unreachable() {
+  return (
+    <div style={{ padding: 48, maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>📡</div>
+      <h2 style={{ margin: '0 0 8px' }}>Can't reach the server</h2>
+      <p style={{ color: 'var(--text-dim)' }}>
+        InsightBoard's backend isn't responding right now. Please try again in a moment.
+      </p>
+    </div>
+  );
+}
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -20,7 +31,7 @@ function Protected({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Unreachable />;
   return <>{children}</>;
 }
 
@@ -28,7 +39,6 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
         <Route
           path="/*"
           element={
