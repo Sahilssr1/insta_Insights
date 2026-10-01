@@ -1,57 +1,43 @@
-# InsightBoard — test deployment (Vercel + Render)
+# InsightBoard — test deployment (Vercel frontend + ngrok backend)
 
 Goal: a **live test build** where invited users register, connect Instagram,
-and check insights. Storage is **ephemeral by design** (see step 4) — if the
-backend sleeps, testers just register and reconnect.
+and check insights. No hosting account or card needed for the backend.
 
 Architecture:
 
 - **Frontend** → Vercel (static Vite build). Already connected to this repo.
-- **Backend** → Render free web service (FastAPI). Blueprint: `render.yaml`.
+- **Backend** → your own machine, exposed via ngrok
+  (`https://ranked-student-tadpole.ngrok-free.dev`). Keep it running while
+  testers use the site.
 
-## 1. Deploy the backend on Render
+## 1. Backend (your machine)
 
-1. Go to dashboard.render.com → **New → Blueprint** → select
-   `Sahilssr1/insta_Insights`.
-2. Render reads `render.yaml` and pre-fills most values. Fill the manual ones:
-   - `TOKEN_ENCRYPTION_KEY` — generate one locally and paste it:
-     `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-     (Save it somewhere safe — changing it later invalidates stored tokens.)
-   - `META_APP_SECRET` — the Instagram app secret from the Meta console.
-   - `META_REDIRECT_URI` — `https://insightboard-api.onrender.com/api/instagram/callback`
-     (use your actual Render URL once the service is created; keep `/api/instagram/callback`).
-   - `FRONTEND_URL` — your Vercel URL, e.g. `https://insight-board.vercel.app`.
-   - `CORS_ORIGINS` — same Vercel URL.
-3. Deploy. Note the service URL, e.g. `https://insightboard-api.onrender.com`.
+1. Start the API: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+   (from the `backend/` directory).
+2. Start the tunnel: `ngrok http 8000`
+   (must be the `ranked-student-tadpole` subdomain already registered with Meta).
+3. In `backend/.env`, add your Vercel URL to `CORS_ORIGINS`, e.g.
+   `CORS_ORIGINS=https://insight-board.vercel.app` (comma-separated if several),
+   then restart the API.
 
-## 2. Point the frontend at the backend
+## 2. Frontend (Vercel)
 
-1. In Vercel → your project → **Settings → General** → confirm **Root Directory**
-   is `frontend` (so Vercel builds the Vite app, not the repo root).
+1. Vercel → project → **Settings → General** → **Root Directory** = `frontend`.
 2. **Settings → Environment Variables** → add
-   `VITE_API_URL=https://insightboard-api.onrender.com` (your Render URL, no
-   trailing slash).
-3. **Deployments → Redeploy** so the new env var is baked into the build.
+   `VITE_API_URL=https://ranked-student-tadpole.ngrok-free.dev`
+   (no trailing slash).
+3. **Deployments → Redeploy** so the env var is baked into the build.
+   (The frontend sends `ngrok-skip-browser-warning` on API calls so ngrok's
+   interstitial page doesn't break them.)
 
-## 3. Register the callback URL with Meta
+## 3. Meta — nothing to change
 
-Meta rejects unknown redirect URIs, so:
+`https://ranked-student-tadpole.ngrok-free.dev/api/instagram/callback` is
+already registered as a redirect URI. When testers authorize, Meta redirects
+their browser to it; if ngrok shows a "Visit Site" interstitial, they click
+through once — the OAuth `code`/`state` survive the reload.
 
-1. Meta console → **My Apps → InsightBoard → Use cases → Customize
-   "Manage messaging & content on Instagram" → API setup with Instagram login
-   → Step 4 "Set up Instagram business login" → Set up**.
-2. Add `https://insightboard-api.onrender.com/api/instagram/callback`
-   (your exact Render URL + `/api/instagram/callback`) → **Save**.
-   (Your ngrok URI can stay registered alongside it.)
-
-## 4. Ephemeral data (accepted for testing)
-
-The free Render instance has no persistent disk: when it sleeps (~15 min idle)
-the SQLite file is wiped. The app rebuilds a fresh database on boot
-(migrations run automatically). Testers simply **register again and reconnect** —
-nothing to restore.
-
-## 5. Invite testers (still required until App Review)
+## 4. Invite testers (still required until App Review)
 
 Deploying does **not** remove Meta's tester rule in Development mode:
 
@@ -68,8 +54,10 @@ Deploying does **not** remove Meta's tester rule in Development mode:
 3. You should land back on `/connect?connected=1` → **Sync now** → dashboard
    fills with real data.
 
-## Later: Oracle Cloud
+## Limits of this setup
 
-When testing is verified, move the backend to your Oracle VM: same code, just
-set the env vars from `render.yaml` (plus a persistent `DATABASE_URL`, e.g.
-Postgres) and point `VITE_API_URL` / Meta redirect URI at the new host.
+- Your machine + ngrok must stay on while testers use the site.
+- Data lives in the local SQLite file (fine for testing).
+- Later: move the backend to Oracle Cloud — same code, just set the env vars
+  (`render.yaml` lists them), point `VITE_API_URL` and the Meta redirect URI
+  at the new host.

@@ -26,6 +26,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   const jwt = getJwt();
   if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
+  // ngrok's free tunnels show a "Visit Site" interstitial to browser requests;
+  // this header tells ngrok to skip it for API (fetch) calls. Harmless for
+  // non-ngrok backends, which simply ignore unknown headers.
+  if (API_BASE.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true';
   if (init.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
