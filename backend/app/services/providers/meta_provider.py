@@ -309,7 +309,6 @@ class MetaInstagramProvider(InstagramDataProvider):
             params={
                 "metric": ",".join(valid),
                 "period": "day",
-                "metric_type": "total_value",
                 "since": int(since.timestamp()),
                 "until": int(until.timestamp()),
             },

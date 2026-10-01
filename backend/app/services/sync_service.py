@@ -135,14 +135,18 @@ async def sync_account(
                 if exc.is_rate_limited:
                     raise
 
+        # 5. Roll up media metrics into daily time series --------------------
+        await _rollup_media_to_daily(session, account)
+
+        sync_completed_at = datetime.now(UTC)
         sync_log.status = "success"
         sync_log.records_synced = records
-        sync_log.sync_completed_at = datetime.now(UTC)
+        sync_log.sync_completed_at = sync_completed_at
         await session.commit()
         return {
             "status": "success",
             "records_synced": records,
-            "synced_at": sync_log.sync_completed_at.isoformat(),
+            "synced_at": sync_completed_at.isoformat(),
         }
     except TokenExpiredError as exc:
         return await _fail_sync(
@@ -242,7 +246,10 @@ async def _sync_daily_insights(
     # Group points by day.
     by_day: dict[datetime, dict[str, float | None]] = {}
     for point in points:
-        day = point.date.replace(hour=0, minute=0, second=0, microsecond=0)
+        point_date = ensure_aware(point.date)
+        if point_date is None:
+            continue
+        day = point_date.replace(hour=0, minute=0, second=0, microsecond=0)
         column = DAILY_COLUMN_MAP.get(point.metric_name)
         if column is None:
             continue
@@ -267,6 +274,53 @@ async def _sync_daily_insights(
         count += 1
     await session.commit()
     return count
+
+
+async def _rollup_media_to_daily(session: AsyncSession, account: InstagramAccount) -> None:
+    """Roll up per-media insights onto daily insights by media post date."""
+    media_list = (
+        await session.execute(
+            select(InstagramMedia).where(InstagramMedia.instagram_account_id == account.id)
+        )
+    ).scalars().all()
+
+    by_day: dict[datetime, dict[str, float]] = {}
+    for media in media_list:
+        if not media.posted_at:
+            continue
+        posted_at = ensure_aware(media.posted_at)
+        if posted_at is None:
+            continue
+        day = posted_at.replace(hour=0, minute=0, second=0, microsecond=0)
+        insights = (
+            await session.execute(
+                select(InstagramInsight).where(InstagramInsight.media_id == media.id)
+            )
+        ).scalars().all()
+        for ins in insights:
+            col = "saves" if ins.metric_name == "saved" else DAILY_COLUMN_MAP.get(ins.metric_name)
+            if not col:
+                continue
+            day_dict = by_day.setdefault(day, {})
+            day_dict[col] = (day_dict.get(col) or 0.0) + float(ins.metric_value)
+
+    for day, vals in by_day.items():
+        res = await session.execute(
+            select(InstagramDailyInsight).where(
+                InstagramDailyInsight.instagram_account_id == account.id,
+                InstagramDailyInsight.metric_date == day,
+            )
+        )
+        row = res.scalar_one_or_none()
+        if row is None:
+            row = InstagramDailyInsight(instagram_account_id=account.id, metric_date=day)
+            session.add(row)
+        for col, val in vals.items():
+            if col == "reach":
+                row.reach = max(row.reach or 0.0, val)
+            else:
+                setattr(row, col, val)
+    await session.commit()
 
 
 async def _sync_media_insights(
