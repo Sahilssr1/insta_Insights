@@ -25,14 +25,20 @@ we never ask for anyone's Instagram password.
 
 In the app dashboard → **Instagram** → **API setup with Instagram Login**:
 
-1. **Valid OAuth Redirect URIs** — add the exact callback URL, e.g.
-   - Local dev: `http://localhost:8000/api/instagram/callback`
-   - Production: `https://your-domain.com/api/instagram/callback`
-   - Must match `META_REDIRECT_URI` in your `.env` **exactly** (scheme, host,
-     port, path — no trailing slash differences).
-2. **Deauthorize callback URL** (optional but recommended):
+1. **Valid OAuth Redirect URIs** — add your exact callback URL:
+   - **Local development (Requires HTTPS):** Meta strictly rejects `http://localhost` for Instagram Business login. Use a free HTTPS tunnel like [ngrok](https://ngrok.com/):
+     ```bash
+     # Start the tunnel to your local backend
+     ngrok http 8000
+     ```
+     Copy the generated HTTPS URL (e.g. `https://xxxx.ngrok-free.app`) and enter:
+     `https://xxxx.ngrok-free.app/api/instagram/callback`
+   - **Production:** `https://your-domain.com/api/instagram/callback`
+   - **Important:** Must match `META_REDIRECT_URI` in your `backend/.env` **exactly** (scheme, host, port, path — no trailing slash differences).
+   - *(Note: On free ngrok accounts, when redirected back for the first time, click **"Visit Site"** on the one-time ngrok security screen).*
+2. **Deauthorize callback URL** (optional):
    `https://your-domain.com/api/instagram/deauthorize`
-3. **Data deletion request callback URL** (optional but recommended):
+3. **Data deletion request callback URL** (optional):
    `https://your-domain.com/api/instagram/data-deletion`
 
 ## 3. Permissions (scopes)

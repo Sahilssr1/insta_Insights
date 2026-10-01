@@ -18,63 +18,146 @@ no Instagram passwords are ever collected.
 
 - **Python 3.12+**
 - **Node.js 20+** (and npm)
+- **ngrok** (free, required only when connecting real Instagram accounts locally via Meta OAuth)
 
-## Run it (5 minutes, development)
+---
 
-### 1. Clone and configure
+## Quickstart Guide
+
+You can run this project in two modes:
+1. **Mock Mode (Instant):** Explore the complete UI and features immediately with rich fixture data without needing any Meta API keys.
+2. **Meta Mode (Live Instagram):** Connect your real Instagram Professional account (Business/Creator) using Meta's official Graph API.
+
+---
+
+### Step 1: Clone and Configure Environment
 
 ```bash
 git clone https://github.com/Sahilssr1/insta_Insights.git
 cd insta_Insights
-
-# Copy the example config into the backend folder, then edit it.
-cp .env.example backend/.env
 ```
 
-Open `backend/.env` in any editor. For a local demo you only need two things:
+Copy the example environment configuration into the `backend/` folder:
 
+- **Linux / macOS:**
+  ```bash
+  cp .env.example backend/.env
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  Copy-Item .env.example backend\.env
+  ```
+
+Open `backend/.env` in your editor:
+
+#### Mode A: Mock Mode (Recommended for first run)
 ```ini
-INSTAGRAM_PROVIDER=mock      # explore the whole UI with fixture data
-JWT_SECRET=<change me>       # any long random string for local dev
+INSTAGRAM_PROVIDER=mock
+JWT_SECRET=any-random-secret-key-at-least-32-chars
 ```
 
-> **No Meta credentials needed for the demo.** The `mock` provider is a
-> clearly-labelled development fixture and **cannot run in production**
-> (`ENVIRONMENT=production` refuses to boot with it).
+#### Mode B: Live Instagram (Meta OAuth)
+```ini
+INSTAGRAM_PROVIDER=meta
+META_APP_ID=your_meta_app_id
+META_APP_SECRET=your_meta_app_secret
+META_REDIRECT_URI=https://your-tunnel-url.ngrok-free.app/api/instagram/callback
+JWT_SECRET=any-random-secret-key-at-least-32-chars
+```
 
-To connect a **real** Instagram account, set `INSTAGRAM_PROVIDER=meta` and fill
-in `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI` — see
-[META_INSTAGRAM_SETUP.md](META_INSTAGRAM_SETUP.md) for the Meta developer
-console walkthrough.
+> **Why ngrok is required for Live Instagram:** Meta's Instagram Business API strictly requires an **HTTPS** callback URL and rejects plain `http://localhost`. For local development, use ngrok to expose your backend over HTTPS (see [Connecting Live Instagram with ngrok](#connecting-live-instagram-with-ngrok) below).
 
-### 2. Start the backend
+---
 
+### Step 2: Start the Backend
+
+Open a terminal in the project root:
+
+**Linux / macOS:**
 ```bash
 cd backend
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/alembic upgrade head        # create tables (also runs on startup)
-.venv/bin/uvicorn app.main:app --reload --port 8000
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
 ```
 
-Leave this terminal running. API is at `http://localhost:8000`,
-interactive docs at `http://localhost:8000/docs`.
+**Windows (PowerShell):**
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
 
-### 3. Start the frontend (new terminal)
+- Backend API: `http://localhost:8000`
+- Interactive Swagger Docs: `http://localhost:8000/docs`
+
+---
+
+### Step 3: Start the Frontend
+
+Open a **second terminal**:
 
 ```bash
 cd frontend
 npm install
-npm run dev                            # http://localhost:5173
+npm run dev
 ```
 
-### 4. Try it
+- Frontend App: `http://localhost:5173`
 
-1. Open **http://localhost:5173** → Register a local account.
-2. Click **Connect Instagram** → with `INSTAGRAM_PROVIDER=mock` it completes
-   instantly (with `meta` it opens the real Meta authorization page).
-3. Click **Sync now** → dashboard KPIs, charts, content list, media detail,
-   and audience demographics populate.
+---
+
+### Step 4: Access the App
+
+1. Open [http://localhost:5173](http://localhost:5173) in your browser.
+2. Register a new local account (email & password).
+3. Navigate to **Connect** in the sidebar:
+   - In **Mock Mode:** Click **Connect Instagram** &rarr; instantly connects with fixture data.
+   - In **Meta Mode:** Click **Connect Instagram** &rarr; redirects to Instagram/Meta to authorize.
+4. Click **Sync now** (top-right or bottom-left) to fetch your latest insights, reels, views, and reach!
+
+---
+
+## Connecting Live Instagram with ngrok
+
+When using `INSTAGRAM_PROVIDER=meta`, follow these 4 quick steps:
+
+1. **Install and authenticate ngrok (free):**
+   - Download from [ngrok.com](https://ngrok.com) or install via package manager (`winget install ngrok.ngrok` / `brew install ngrok`).
+   - Add your authtoken:
+     ```bash
+     ngrok config add-authtoken <your-ngrok-token>
+     ```
+2. **Start the tunnel to your backend:**
+   ```bash
+   ngrok http 8000
+   ```
+   You will receive a public HTTPS URL like:
+   `https://xxxx-xxxx.ngrok-free.app`
+3. **Update `backend/.env`:**
+   Set `META_REDIRECT_URI` to your ngrok URL with `/api/instagram/callback`:
+   ```ini
+   META_REDIRECT_URI=https://xxxx-xxxx.ngrok-free.app/api/instagram/callback
+   ```
+4. **Configure Meta Developer Console:**
+   - In your [Meta App Dashboard](https://developers.facebook.com/apps), navigate to **Instagram** &rarr; **API setup with Instagram Login**.
+   - Under **Valid OAuth Redirect URIs**, paste the exact same URL:
+     `https://xxxx-xxxx.ngrok-free.app/api/instagram/callback`
+   - Click **Save Changes**.
+   - *(Note: Free ngrok domains show a one-time security warning in your browser — simply click **"Visit Site"** once).*
+
+---
+
+## Common Questions & Troubleshooting
+
+- **Account Type Requirement:** The Instagram account must be a **Professional account** (Creator or Business). Personal accounts cannot access Instagram Graph Insights. You can switch for free in Instagram app: *Settings &rarr; Account &rarr; Switch to Professional Account*.
+- **"Demographics Unavailable":** Meta's privacy policy only releases audience demographic breakdowns (Age, Gender, City, Country) for accounts with **at least 100 followers**. Accounts under 100 followers will see views, reach, reels, and engagement, while the Demographics tab safely displays an informative placeholder.
+- **"Insufficient developer role" during Meta login:** While your Meta app is in Development mode, only users added as **Instagram Testers** can log in. In Meta Console: *App roles &rarr; Roles &rarr; Add Instagram Tester*, then accept the invite on Instagram at [https://www.instagram.com/accounts/manage_access/](https://www.instagram.com/accounts/manage_access/).
 
 ---
 
