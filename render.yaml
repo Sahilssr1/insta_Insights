@@ -1,0 +1,37 @@
+# Render blueprint for the InsightBoard backend (test deployment).
+# Deploy: Render dashboard -> New -> Blueprint -> select this repo.
+# Then fill the `sync: false` values in the Render dashboard.
+# NOTE: no persistent disk here — the SQLite file is wiped whenever the
+# free instance sleeps/restarts. That is intentional for testing; testers
+# simply register and reconnect. (See DEPLOY_TEST.md.)
+
+services:
+  - type: web
+    name: insightboard-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./insightboard.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false # paste a Fernet key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: META_APP_ID
+        value: "913085258335522"
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_REDIRECT_URI
+        sync: false # https://<this-service>.onrender.com/api/instagram/callback (add verbatim in Meta dashboard too)
+      - key: META_API_VERSION
+        value: v26.0
+      - key: INSTAGRAM_PROVIDER
+        value: meta
+      - key: FRONTEND_URL
+        sync: false # https://<your-app>.vercel.app
+      - key: CORS_ORIGINS
+        sync: false # https://<your-app>.vercel.app

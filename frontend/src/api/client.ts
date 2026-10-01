@@ -7,6 +7,11 @@ export interface ApiError extends Error {
 
 const TOKEN_KEY = 'insightboard_jwt';
 
+// Base URL of the backend API. Empty in local dev (Vite proxies /api to
+// localhost:8000); set VITE_API_URL to the deployed backend origin
+// (e.g. https://insightboard-api.onrender.com) for hosted frontends.
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+
 export function getJwt(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -23,7 +28,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
   if (init.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(path, { ...init, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let data: any = null;
